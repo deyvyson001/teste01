@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<title>Analisador PRO - Price Action</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+*{box-sizing:border-box}
+body{
+margin:0;
+font-family:Arial,Helvetica,sans-serif;
+background:radial-gradient(circle at top,#1e2833,#0b0f14);
+min-height:100vh;
+display:flex;
+align-items:center;
+justify-content:center;
+color:#fff;
+}
+
+#loginBox{
+background:#121821;
+padding:30px;
+border-radius:14px;
+width:100%;
+max-width:360px;
+text-align:center;
+}
+#loginBox input{
+width:100%;
+padding:12px;
+border:none;
+border-radius:8px;
+margin:6px 0;
+}
+#loginBox button{
+width:100%;
+padding:12px;
+border:none;
+border-radius:8px;
+background:#2f80ed;
+color:#fff;
+font-weight:bold;
+cursor:pointer;
+margin-top:10px;
+}
+#erroLogin{
+color:#ff4c4c;
+margin-top:8px;
+display:none;
+}
+
+#sistema{
+display:none;
+width:100%;
+max-width:1100px;
+padding:20px;
+}
+
+.header{
+display:flex;
+justify-content:space-between;
+align-items:center;
+}
+
+.sair{
+background:#ff4c4c;
+border:none;
+padding:10px 16px;
+color:white;
+border-radius:8px;
+cursor:pointer;
+}
+
+.cards{
+display:grid;
+grid-template-columns:2fr 1fr;
+gap:20px;
+margin-top:20px;
+}
+
+.card{
+background:#121821;
+padding:20px;
+border-radius:16px;
+}
+
+.upload{
+border:2px dashed #2f80ed;
+padding:18px;
+border-radius:12px;
+cursor:pointer;
+text-align:center;
+}
+
+.upload input{display:none}
+
+#preview{
+max-width:100%;
+margin-top:10px;
+display:none;
+border-radius:10px;
+}
+
+.botao{
+margin-top:14px;
+padding:12px 26px;
+background:#2f80ed;
+border:none;
+border-radius:8px;
+color:white;
+font-weight:bold;
+cursor:pointer;
+transition:.2s;
+}
+.botao:active{transform:scale(.95)}
+
+#resultado{
+margin-top:16px;
+font-size:26px;
+font-weight:bold;
+}
+
+#statusAnalise{
+margin-top:8px;
+font-size:14px;
+opacity:.8;
+}
+
+#forcaBox{
+margin-top:14px;
+display:none;
+}
+
+#barra{
+height:14px;
+background:#2a2a2a;
+border-radius:10px;
+overflow:hidden;
+}
+
+#barra span{
+display:block;
+height:100%;
+width:0%;
+background:linear-gradient(90deg,#00ff9c,#2f80ed);
+transition:.6s;
+}
+
+#porcentagem{
+margin-top:6px;
+font-size:14px;
+text-align:center;
+}
+
+.compra{color:#00ff9c}
+.venda{color:#ff4c4c}
+.neutro{color:#f2c94c}
+.erro{color:#ff7b7b}
+
+.admin input{
+width:100%;
+padding:8px;
+margin:6px 0;
+border-radius:6px;
+border:none;
+}
+
+.listaUsuarios div{
+background:#1c2533;
+padding:6px;
+border-radius:6px;
+margin-top:4px;
+display:flex;
+justify-content:space-between;
+}
+</style>
+</head>
+<body>
+
+<div id="loginBox">
+<h2>🔐 Login</h2>
+<input id="usuario" placeholder="Usuário">
+<input id="senha" type="password" placeholder="Senha">
+<button onclick="login()">Entrar</button>
+<div id="erroLogin">Usuário ou senha inválidos</div>
+</div>
+
+<div id="sistema">
+<div class="header">
+<h2>📊 Analisador Price Action</h2>
+<button class="sair" onclick="logout()">Sair</button>
+</div>
+
+<div class="cards">
+
+<div class="card">
+<label class="upload">
+<input type="file" id="imagem" accept="image/*" onchange="mostrarImagem()">
+Enviar Print do Gráfico
+</label>
+
+<img id="preview">
+<button class="botao" id="btnAnalisar" onclick="analisar()">Analisar</button>
+
+<div id="statusAnalise">Nenhuma análise feita.</div>
+<div id="resultado"></div>
+
+<div id="forcaBox">
+<div id="barra"><span></span></div>
+<div id="porcentagem"></div>
+</div>
+</div>
+
+<div class="card admin" id="painelAdmin">
+<h3>👑 Painel Admin</h3>
+<input id="novoUsuario" placeholder="Novo usuário">
+<input id="novaSenha" placeholder="Nova senha">
+<button class="botao" onclick="adicionarUsuario()">Adicionar</button>
+<div class="listaUsuarios" id="listaUsuarios"></div>
+</div>
+
+</div>
+</div>
+
+<canvas id="canvas" style="display:none"></canvas>
+
+<script>
+let usuarios = JSON.parse(localStorage.getItem("usuarios")) || {admin:"1234"};
+function salvar(){ localStorage.setItem("usuarios",JSON.stringify(usuarios)); }
+
+function login(){
+if(usuarios[usuario.value] === senha.value){
+localStorage.setItem("logado",usuario.value);
+mostrarSistema();
+}else erroLogin.style.display="block";
+}
+
+function mostrarSistema(){
+loginBox.style.display="none";
+sistema.style.display="block";
+if(localStorage.getItem("logado")==="admin") atualizarLista();
+else painelAdmin.style.display="none";
+}
+
+function logout(){
+localStorage.removeItem("logado");
+location.reload();
+}
+
+if(localStorage.getItem("logado")) mostrarSistema();
+
+function adicionarUsuario(){
+if(!novoUsuario.value || !novaSenha.value) return alert("Preencha tudo");
+usuarios[novoUsuario.value]=novaSenha.value;
+salvar();
+novoUsuario.value="";
+novaSenha.value="";
+atualizarLista();
+}
+
+function atualizarLista(){
+listaUsuarios.innerHTML="";
+for(let u in usuarios){
+let d=document.createElement("div");
+d.innerHTML=u+` <button onclick="remover('${u}')">X</button>`;
+listaUsuarios.appendChild(d);
+}
+}
+
+function remover(u){
+if(u==="admin") return alert("Admin não pode ser removido");
+delete usuarios[u];
+salvar();
+atualizarLista();
+}
+
+let carregada=false;
+function mostrarImagem(){
+let r=new FileReader();
+r.onload=()=>{
+preview.src=r.result;
+preview.style.display="block";
+carregada=true;
+};
+r.readAsDataURL(imagem.files[0]);
+}
+
+function analisar(){
+if(!carregada) return alert("Envie um print do gráfico");
+
+statusAnalise.innerHTML="🔍 Analisando...";
+btnAnalisar.disabled=true;
+forcaBox.style.display="none";
+
+setTimeout(()=>{
+
+const ctx=canvas.getContext("2d");
+canvas.width=preview.width;
+canvas.height=preview.height;
+ctx.drawImage(preview,0,0);
+
+const data=ctx.getImageData(0,0,canvas.width,canvas.height).data;
+let verdes=0, vermelhos=0;
+
+for(let i=0;i<data.length;i+=4){
+let r=data[i], g=data[i+1], b=data[i+2];
+if(g>r+40 && g>b+40) verdes++;
+if(r>g+40 && r>b+40) vermelhos++;
+}
+
+if(verdes+vermelhos < 250){
+resultado.innerHTML='<span class="erro">❌ Imagem inválida.</span>';
+statusAnalise.innerHTML="⚠️ Falha na análise.";
+btnAnalisar.disabled=false;
+return;
+}
+
+let total = verdes + vermelhos;
+let diferenca = Math.abs(verdes - vermelhos);
+let forca = Math.min(100, Math.round((diferenca / total) * 100));
+
+let texto="⚪ NEUTRO", classe="neutro", cor="#f2c94c";
+if(verdes > vermelhos*1.2){ texto="✅ COMPRA"; classe="compra"; cor="#00ff9c"; }
+if(vermelhos > verdes*1.2){ texto="❌ VENDA"; classe="venda"; cor="#ff4c4c"; }
+
+resultado.innerHTML=`<span class="${classe}">${texto}</span>`;
+
+barra.firstChild.style.width = forca + "%";
+barra.firstChild.style.background = cor;
+porcentagem.innerHTML = "Força do sinal: " + forca + "%";
+forcaBox.style.display="block";
+
+statusAnalise.innerHTML="✅ Analisado em "+new Date().toLocaleString();
+btnAnalisar.disabled=false;
+
+},800);
+}
+</script>
+
+</body>
+</html>
